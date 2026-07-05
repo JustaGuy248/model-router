@@ -1,0 +1,8 @@
+# Core has ZERO runtime dependencies — the router uses only the Python standard library.
+# This keeps `analyze_plan.py` runnable offline with no install step.
+
+# ---- Optional: only needed to enable the live Haiku tie-breaker ----
+# anthropic>=0.40.0
+
+# ---- Development / test ----
+pytest>=7.0
