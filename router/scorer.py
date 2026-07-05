@@ -53,7 +53,7 @@ SIGNALS: Dict[str, List[Tuple[int, List[str]]]] = {
         (0, ["a line", "single line", "one file", "snippet", "sentence"]),
         (1, ["file", "function", "module", "endpoint", "component"]),
         (2, ["several", "multiple files", "across", "codebase", "package",
-             "subsystem", "many"]),
+             "subsystem", "many", "call site", "call sites", "all files"]),
         (3, ["whole repo", "entire codebase", "monorepo", "all documents",
              "cross-repo", "system-wide", "everything"]),
     ],

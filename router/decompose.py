@@ -69,28 +69,67 @@ def _strip_checkbox(body: str):
     return m.group("body"), done
 
 
+# Leading discourse markers to strip before looking for an imperative verb, so
+# "Then summarize ...", "After that, write ...", "Finally, reformat ..." are
+# recognised as tasks.
+_CONNECTIVES = {
+    "then", "next", "after", "that", "afterwards", "afterward", "first",
+    "second", "third", "finally", "also", "now", "subsequently", "later",
+    "please", "lastly", "additionally", "furthermore", "so", "and",
+}
+
+# Base-form verbs that mark an actionable task. Deliberately excludes weak/
+# ambiguous verbs like "do"/"be" so a non-task sentence that merely contains
+# "...needs to do" is not misread as a task.
+_IMPERATIVE_VERBS = {
+    "build", "create", "add", "write", "implement", "design", "set",
+    "setup", "configure", "deploy", "test", "fix", "refactor", "parse",
+    "extract", "format", "reformat", "summarize", "classify", "generate",
+    "make", "update", "remove", "delete", "integrate", "wire", "define",
+    "scaffold", "draft", "review", "analyze", "optimize", "migrate",
+    "document", "rename", "compose", "split", "validate", "orchestrate",
+    "plan", "research", "investigate", "audit", "rewrite", "publish",
+}
+
+_OBLIGATION = ("need to", "needs to", "should", "must", "have to", "has to",
+               "we will", "i will", "we'll", "i'll")
+
+
+def _words(text: str):
+    """Lower-cased alpha-only word tokens."""
+    return re.findall(r"[a-z]+", text.lower())
+
+
 def _looks_imperative(sentence: str) -> bool:
     """Heuristic: does this prose sentence read like a task to do?
 
-    We accept sentences that start with a bare verb (build, create, add, ...)
-    or contain an obligation phrase ("need to", "should", "must"). This is a
-    fallback only — structured lists are always preferred.
+    A sentence is a task if, after stripping leading discourse markers, it
+    starts with an imperative verb, OR it contains an obligation phrase
+    ("need to", "should", "must") *and* an actual imperative verb somewhere.
+    Structured lists are always preferred; this is only the prose fallback.
     """
-    s = sentence.strip().lower()
-    if not s:
+    tokens = _words(sentence)
+    if not tokens:
         return False
-    obligation = ("need to", "needs to", "should ", "must ", "have to", "we will", "i will")
-    if any(p in s for p in obligation):
+
+    # Strip leading connectives ("then", "after that", "finally", ...).
+    i = 0
+    while i < len(tokens) and tokens[i] in _CONNECTIVES:
+        i += 1
+    rest = tokens[i:]
+    if not rest:
+        return False
+
+    # Case 1: begins with an imperative verb.
+    if rest[0] in _IMPERATIVE_VERBS:
         return True
-    first = re.sub(r"[^a-z]", "", s.split()[0]) if s.split() else ""
-    imperative_verbs = {
-        "build", "create", "add", "write", "implement", "design", "set",
-        "setup", "configure", "deploy", "test", "fix", "refactor", "parse",
-        "extract", "format", "summarize", "classify", "generate", "make",
-        "update", "remove", "delete", "integrate", "wire", "define", "scaffold",
-        "draft", "review", "analyze", "optimize", "migrate", "document",
-    }
-    return first in imperative_verbs
+
+    # Case 2: obligation phrase + a real imperative verb present anywhere.
+    lower = sentence.lower()
+    if any(p in lower for p in _OBLIGATION) and any(t in _IMPERATIVE_VERBS for t in tokens):
+        return True
+
+    return False
 
 
 def _split_prose(paragraph: str, start_index: int, section: Optional[str]) -> List[Task]:
